@@ -1,0 +1,19 @@
+{
+    "build": {
+        "dockerfile": "../Dockerfile" // 相対パス表記
+    },
+    "name": "rust",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer",
+                "bungcip.better-toml",
+                "serayuzgur.crates"
+            ]
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+    "forwardPorts": [2345, 5905, 18080]
+  }
