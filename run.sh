@@ -3,7 +3,7 @@
 HOME_PATH=$PWD
 TARGET_PATH=$PWD"/build"
 OS_PATH=$TARGET_PATH"/wasabi"
-APP_NAME="toy-browser"
+APP_NAME="rust-web-browser"
 MAKEFILE_PATH=$HOME_PATH"/Makefile"
 
 # execute `mkdir build/` if it doesn't exist
@@ -36,7 +36,7 @@ cd $HOME_PATH
 # download Makefile if it doesn't exist
 if [ ! -f $MAKEFILE_PATH ]; then
   echo "downloading Makefile..."
-  wget https://raw.githubusercontent.com/hikalium/wasabi/main/external_app_template/Makefile
+  curl -O https://raw.githubusercontent.com/hikalium/wasabi/main/external_app_template/Makefile
 fi
 
 make build

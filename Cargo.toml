@@ -1,5 +1,5 @@
 [package]
-name = "toy-browser"
+name = "rust-web-browser"
 version = "0.1.0"
 edition = "2021"
 

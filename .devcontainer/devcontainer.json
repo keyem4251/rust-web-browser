@@ -15,5 +15,8 @@
     "features": {
         "ghcr.io/devcontainers/features/git:1": {}
     },
-    "forwardPorts": [2345, 5905, 18080]
+    "forwardPorts": [2345, 5905, 18080],
+    "runArgs": [
+		"--privileged", "--net=host"
+	]
   }
