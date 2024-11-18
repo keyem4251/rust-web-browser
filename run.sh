@@ -39,5 +39,7 @@ if [ ! -f $MAKEFILE_PATH ]; then
   curl -O https://raw.githubusercontent.com/hikalium/wasabi/main/external_app_template/Makefile
 fi
 
+export DISPLAY=0
+
 make build
 $OS_PATH/scripts/run_with_app.sh ./target/x86_64-unknown-none/release/$APP_NAME
