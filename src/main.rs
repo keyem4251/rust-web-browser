@@ -4,7 +4,7 @@
 use noli::prelude::*;
 
 fn main() {
-    Api::write_string("Hello World\n");
+    Api::write_string("Hello World!\n");
     println!("Hello from println!");
     Api::exit(42);
 }
