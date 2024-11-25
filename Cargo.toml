@@ -1,3 +1,4 @@
+workspace = { members = [ "web_browser_core"] }
 [package]
 name = "rust-web-browser"
 version = "0.1.0"
