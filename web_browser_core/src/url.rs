@@ -114,7 +114,6 @@ impl Url {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 }
 
 #[test]
@@ -137,7 +136,7 @@ fn test_url_host_port() {
     let expected = Ok(Url {
         url: url.clone(),
         host: "example.com".to_string(),
-        port: "88888".to_string(),
+        port: "8888".to_string(),
         path: "".to_string(),
         searchpart: "".to_string(),
     });
@@ -151,7 +150,7 @@ fn test_url_host_port_path() {
     let expected = Ok(Url {
         url: url.clone(),
         host: "example.com".to_string(),
-        port: "88888".to_string(),
+        port: "8888".to_string(),
         path: "index.html".to_string(),
         searchpart: "".to_string(),
     });
@@ -179,7 +178,7 @@ fn test_url_host_port_path_searchpart() {
     let expected = Ok(Url {
         url: url.clone(),
         host: "example.com".to_string(),
-        port: "88888".to_string(),
+        port: "8888".to_string(),
         path: "index.html".to_string(),
         searchpart: "a=123&b=456".to_string(),
     });
