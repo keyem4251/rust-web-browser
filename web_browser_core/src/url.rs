@@ -1,4 +1,7 @@
-use alloc::{string::{String,ToString}, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Url {
@@ -34,7 +37,7 @@ impl Url {
 
     fn is_http(&mut self) -> bool {
         if self.url.contains("http://") {
-            return true
+            return true;
         }
         false
     }
@@ -86,7 +89,10 @@ impl Url {
     }
 
     fn create_url_parts(&self) -> Vec<&str> {
-        self.url.trim_start_matches("http://").splitn(2, "/").collect()
+        self.url
+            .trim_start_matches("http://")
+            .splitn(2, "/")
+            .collect()
     }
 
     pub fn host(&self) -> String {
@@ -104,4 +110,79 @@ impl Url {
     pub fn searchpart(&self) -> String {
         self.searchpart.clone()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
+
+#[test]
+fn test_url_host() {
+    let url = "http://example.com".to_string();
+    let expected = Ok(Url {
+        url: url.clone(),
+        host: "example.com".to_string(),
+        port: "80".to_string(),
+        path: "".to_string(),
+        searchpart: "".to_string(),
+    });
+
+    assert_eq!(expected, Url::new(url).parse());
+}
+
+#[test]
+fn test_url_host_port() {
+    let url = "http://example.com:8888".to_string();
+    let expected = Ok(Url {
+        url: url.clone(),
+        host: "example.com".to_string(),
+        port: "88888".to_string(),
+        path: "".to_string(),
+        searchpart: "".to_string(),
+    });
+
+    assert_eq!(expected, Url::new(url).parse());
+}
+
+#[test]
+fn test_url_host_port_path() {
+    let url = "http://example.com:8888/index.html".to_string();
+    let expected = Ok(Url {
+        url: url.clone(),
+        host: "example.com".to_string(),
+        port: "88888".to_string(),
+        path: "index.html".to_string(),
+        searchpart: "".to_string(),
+    });
+
+    assert_eq!(expected, Url::new(url).parse());
+}
+
+#[test]
+fn test_url_host_path() {
+    let url = "http://example.com/index.html".to_string();
+    let expected = Ok(Url {
+        url: url.clone(),
+        host: "example.com".to_string(),
+        port: "80".to_string(),
+        path: "index.html".to_string(),
+        searchpart: "".to_string(),
+    });
+
+    assert_eq!(expected, Url::new(url).parse());
+}
+
+#[test]
+fn test_url_host_port_path_searchpart() {
+    let url = "http://example.com:8888/index.html?a=123&b=456".to_string();
+    let expected = Ok(Url {
+        url: url.clone(),
+        host: "example.com".to_string(),
+        port: "88888".to_string(),
+        path: "index.html".to_string(),
+        searchpart: "a=123&b=456".to_string(),
+    });
+
+    assert_eq!(expected, Url::new(url).parse());
 }
