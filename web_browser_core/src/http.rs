@@ -97,3 +97,55 @@ impl Header {
         Self { name, value }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_status_line_only() {
+        let raw = "HTTP/1.1 200 OK\n\n".to_string();
+        let res = HttpResponse::new(raw).expect("Failed to parse http response");
+        assert_eq!(res.version(), "HTTP/1.1");
+        assert_eq!(res.status_code(), 200);
+        assert_eq!(res.reason(), "OK");
+    }
+
+    #[test]
+    fn test_one_header() {
+        let raw = "HTTP/1.1 200 OK\nDate:xx xx xx\n\n".to_string();
+        let res = HttpResponse::new(raw).expect("Failed to parse http response");
+        assert_eq!(res.version(), "HTTP/1.1");
+        assert_eq!(res.status_code(), 200);
+        assert_eq!(res.reason(), "OK");
+        assert_eq!(res.header_value("Date"), Ok("xx xx xx".to_string()));
+    }
+
+    #[test]
+    fn test_two_headers() {
+        let raw = "HTTP/1.1 200 OK\nDate:xx xx xx\nContent-Length: 42\n\n".to_string();
+        let res = HttpResponse::new(raw).expect("Failed to parse http response");
+        assert_eq!(res.version(), "HTTP/1.1");
+        assert_eq!(res.status_code(), 200);
+        assert_eq!(res.reason(), "OK");
+        assert_eq!(res.header_value("Date"), Ok("xx xx xx".to_string()));
+        assert_eq!(res.header_value("Content-Length"), Ok("42".to_string()));
+    }
+
+    #[test]
+    fn test_body() {
+        let raw = "HTTP/1.1 200 OK\nDate:xx xx xx\n\nbody message".to_string();
+        let res = HttpResponse::new(raw).expect("Failed to parse http response");
+        assert_eq!(res.version(), "HTTP/1.1");
+        assert_eq!(res.status_code(), 200);
+        assert_eq!(res.reason(), "OK");
+        assert_eq!(res.header_value("Date"), Ok("xx xx xx".to_string()));
+        assert_eq!(res.body(), "body message".to_string());
+    }
+
+    #[test]
+    fn test_invalid() {
+        let raw = "HTTP/1.1 200 OK".to_string();
+        assert!(HttpResponse::new(raw).is_err());
+    }
+}
