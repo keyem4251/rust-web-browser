@@ -113,8 +113,7 @@ impl Url {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
 
 #[test]
 fn test_url_host() {

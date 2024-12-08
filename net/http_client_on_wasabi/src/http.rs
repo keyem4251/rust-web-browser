@@ -26,7 +26,9 @@ impl HttpClient {
         let mut stream = match TcpStream::connect(socket_addr) {
             Ok(stream) => stream,
             Err(_) => {
-                return Err(Error::Network("Failed to connect to TCP stream".to_string()))
+                return Err(Error::Network(
+                    "Failed to connect to TCP stream".to_string(),
+                ))
             }
         };
 
@@ -48,7 +50,9 @@ impl HttpClient {
         let _bytes_written = match stream.write(request.as_bytes()) {
             Ok(bytes) => bytes,
             Err(_) => {
-                return Err(Error::Network("Failed to send a request to TCP".to_string()))
+                return Err(Error::Network(
+                    "Failed to send a request to TCP".to_string(),
+                ))
             }
         };
 
@@ -59,7 +63,9 @@ impl HttpClient {
             let bytes_read = match stream.read(&mut buf) {
                 Ok(bytes) => bytes,
                 Err(_) => {
-                    return Err(Error::Network("Failed to receive a request from TCP stream".to_string()));
+                    return Err(Error::Network(
+                        "Failed to receive a request from TCP stream".to_string(),
+                    ));
                 }
             };
             if bytes_read == 0 {
