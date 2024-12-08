@@ -1,12 +1,13 @@
-workspace = { members = [ "net/http_client_on_wasabi", "web_browser_core"] }
+workspace = { members = [ "net/wasabi", "web_browser_core"] }
 [package]
 name = "rust-web-browser"
 version = "0.1.0"
 edition = "2021"
+default-run = "rust-web-browser"
 
 [features]
 default = ["wasabi"]
-wasabi = ["dep:http_client_on_wasabi", "dep:noli"]
+wasabi = ["dep:net_wasabi", "dep:noli"]
 
 [[bin]]
 name = "rust-web-browser"
@@ -15,5 +16,5 @@ required-features = ["wasabi"]
 
 [dependencies]
 web_browser_core = { path = "./web_browser_core" }
-http_client_on_wasabi = { path = "./net/http_client_on_wasabi", optional = true }
+net_wasabi = { path = "./net/wasabi", optional = true }
 noli = { git = "https://github.com/hikalium/wasabi.git", branch = "for_saba", optional = true }

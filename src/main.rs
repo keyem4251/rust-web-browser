@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use crate::alloc::string::ToString;
-use http_client_on_wasabi::http::HttpClient;
+use net_wasabi::http::HttpClient;
 use noli::prelude::*;
 
 fn main() -> u64 {
