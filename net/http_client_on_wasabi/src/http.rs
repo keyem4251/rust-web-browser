@@ -1,5 +1,12 @@
-use core::net::lookup_host;
-use noli::net::{SocketAddr, TcpStream};
+extern crate alloc;
+
+use alloc::format;
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use noli::net::{SocketAddr, TcpStream, lookup_host};
+use web_browser_core::error::Error;
+use web_browser_core::http::HttpResponse;
 
 pub struct HttpClient {}
 
@@ -12,7 +19,7 @@ impl HttpClient {
         // URLからホストを探す
         let ips = match lookup_host(&"example.com") {
             Ok(ips) => ips,
-            Err(e) => return Err(Error::Network("Failed to find IP addresses: {:#?}", e)),
+            Err(_) => return Err(Error::Network("Failed to find IP addresses".to_string())),
         };
 
         if ips.len() < 1 {
@@ -41,10 +48,10 @@ impl HttpClient {
         // ヘッダを追加
         request.push_str("Host: ");
         request.push_str(&host);
-        request.push("\n");
+        request.push('\n');
         request.push_str("Accept: text/html\n");
         request.push_str("Connection: close\n");
-        request.push("\n");
+        request.push('\n');
 
         // リクエストの送信
         let _bytes_written = match stream.write(request.as_bytes()) {
