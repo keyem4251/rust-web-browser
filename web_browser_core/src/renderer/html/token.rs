@@ -1,3 +1,4 @@
+use crate::renderer::html::attribute::Attribute;
 use alloc::{string::String, vec::Vec};
 
 
@@ -40,4 +41,26 @@ pub enum HtmlToken {
     Char(char),
     // ファイルの終了（End Of File）
     Eof,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum State {
+    Data, // https://html.spec.whatwg.org/multipage/parsing.html#data-state
+    TagOpen,     // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
+    EndTagOpen,     // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
+    TagName,     // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
+    BeforeAttributeName,// https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-name-state
+    AttributeName, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
+    AfterAttributeName, // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-name-state
+    BeforeAttributeValue, // https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-value-state
+    AttributeValueDoubleQuoted, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
+    AttributeValueSingleQuoted, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(single-quoted)-state
+    AttributeValueUnquoted, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
+    AfterAttributeValueQuoted, // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
+    SelfClosingStartTag, // https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
+    ScriptData, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-state
+    ScriptDataLessThanSign, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-less-than-sign-state
+    ScriptDataEndTagOpen, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-open-state
+    ScriptDataEndTagName, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
+    TemporaryBuffer, // https://html.spec.whatwg.org/multipage/parsing.html#temporary-buffer
 }
