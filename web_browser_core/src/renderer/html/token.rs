@@ -82,8 +82,12 @@ impl Iterator for HtmlTokenizer {
                     // 上記以外の場合は文字トークンを返す
                     return Some(HtmlToken::Char(c));
                 }
+
+                // Dataのときに文字が < ならTagOpenに遷移する
+                // <body>
                 State::TagOpen => {
                     // 文字が / なら状態を次の状態のEndTagOpenに変更する
+                    // </body>の/
                     if c == '/' {
                         self.state = State::EndTagOpen;
                         continue;
@@ -91,6 +95,7 @@ impl Iterator for HtmlTokenizer {
 
                     // 文字がアルファベットなら、現在の文字を再度取り扱う
                     // 状態をTagNameにして、現在の文字をもとにタグを作成する
+                    // <body>のbとか
                     if c.is_ascii_alphabetic() {
                         self.reconsume = true;
                         self.state = State::TagName;
@@ -106,6 +111,43 @@ impl Iterator for HtmlTokenizer {
                     // 上記以外の場合は現在の文字をサイト取り扱う
                     self.reconsume = true;
                     self.state = State::Data;
+                }
+
+                // TagOpenのときに / ならEndTagOpenに遷移する
+                // </body>の/
+                State::EndTagOpen => {
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    if c.is_ascii_alphabetic() {
+                        self.reconsume = true;
+                        self.state = State::TagName;
+                        self.create_tag(false);
+                        continue;
+                    }
+                }
+
+                // TagOpenのときに文字がアルファベットならTagNameに遷移する
+                // <div class="">のdivのあとの空文字
+                State::TagName => {
+                    // 文字がホワイトスペースのときBeforeAttributeNameに遷移する
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    // <br />など
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    // 文字が > のときはタグが閉じられたためDataに遷移してcreate_tagによって作成したlatest_tokenを返す
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
                 }
             }
         }
