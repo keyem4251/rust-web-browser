@@ -49,6 +49,34 @@ impl HtmlTokenizer {
         self.reconsume = false;
         self.input[self.pos - 1]
     }
+
+    // create_tagで作成された最後のトークン（latest_token）に対して1文字をそのトークンのタグの名前として追加する
+    fn append_tag_name(&mut self, c: char) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                HtmlToken::StartTag { 
+                    ref mut tag,
+                    self_closing: _,
+                    attributes: _,
+                } | HtmlToken::EndTag { ref mut tag } => tag.push(c),
+                _ => panic!("latest_token should be either StartTag or EndTag"),
+            }
+            
+        }
+    }
+
+    // create_tagで作成された最後のトークン（latest_token）を返し、latest_tokenをNoneにする
+    fn take_latest_token(&mut self) -> Option<HtmlToken> {
+        assert!(self.latest_token.is_some());
+
+        let t = self.latest_token.as_ref().cloned();
+        self.latest_token = None;
+        assert!(self.latest_token.is_none());
+
+        t
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -148,6 +176,20 @@ impl Iterator for HtmlTokenizer {
                         self.state = State::Data;
                         return self.take_latest_token();
                     }
+
+                    // 文字がアルファベットの場合は現在のタグに文字をタグの名前として追加する
+                    // <div class="">のdivのdとか
+                    if c.is_ascii_uppercase() {
+                        self.append_tag_name(c.to_ascii_lowercase());
+                        continue;
+                    }
+
+                    // 入力文字が最後に到達した場合にはEofトークンを返す
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_tag_name(c);
                 }
             }
         }
