@@ -77,10 +77,47 @@ impl HtmlTokenizer {
 
         t
     }
+
+    // create_tagで作成された最後のトークン（latest_token）に対して新しい属性を追加する
+    fn start_new_attribute(&mut self) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                HtmlToken::StartTag { 
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => attributes.push(Attribute::new()),
+                _ => panic!("latest_token should be either StartTag"),
+            }
+        }
+    }
+
+    // create_tagで作成された最後のトークン（latest_token）に対して属性の文字を追加する
+    fn append_attribute(&mut self, c: char, is_name: bool) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                HtmlToken::StartTag { 
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    let len = attributes.len();
+                    assert!(len > 0);
+
+                    attributes[len - 1].add_char(c, is_name);
+                }
+                _ => panic!("latest_token should be either StartTag"),
+            }
+        }
+    }
 }
 
 impl Iterator for HtmlTokenizer {
-    type Item = HtmlTokenizer;
+    type Item = HtmlToken;
 
     fn next(&mut self) -> Option<Self::Item> {
         // 現在の位置が入力文字よりの長さより長い場合はNoneを返す
@@ -190,6 +227,79 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     self.append_tag_name(c);
+                }
+
+                // タグの属性の名前を処理する前の状態
+                // <br class="" />のclassを処理する前の状態
+                State::BeforeAttributeName => {
+                    // <br class="" />のclassを処理し終わったあとの状態
+                    if c == '/' || c == '>' || self.is_eof() {
+                        self.reconsume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
+                }
+
+                // タグの属性の名前を処理する状態
+                // <br class="" />のclassを処理する状態
+                State::AttributeName => {
+                    // <br class="" />のclassを処理し終わったあとの状態
+                    if c == ' ' || c == '/' || c == '>' || self.is_eof() {
+                        self.reconsume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    if c.is_ascii_uppercase() {
+                        self.append_attribute(c.to_ascii_lowercase(), /*is_name*/true);
+                        continue;
+                    }
+
+                    self.append_attribute(c, /*is_name*/true);
+                }
+
+                // タグの属性の名前を処理している状態
+                // <br class="" />のclassを処理している状態
+                State::AfterAttributeName => {
+                    // 空欄は無視する
+                    if c == ' ' {
+                        continue;
+                    }
+
+                    // <br class="" />の / なのでSelfClosingStartTagに遷移する
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    // <br class="" />の = なのでBeforeAttributeValueに遷移する
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    // <br class="" />の > なのでDataに遷移してcreate_tagによって作成したlatest_tokenを返す
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
                 }
             }
         }
