@@ -130,6 +130,10 @@ impl HtmlTokenizer {
             }
         }
     }
+
+    fn is_eof(&self) -> bool {
+        self.pos > self.input.len()
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -429,6 +433,84 @@ impl Iterator for HtmlTokenizer {
                         // エラー処理
                         return Some(HtmlToken::Eof);
                     }
+                }
+
+                // <script>タグの中のJavaScriptを処理する状態
+                State::ScriptData => {
+                    if c == '<' {
+                        self.state = State::ScriptDataLessThanSign;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    return Some(HtmlToken::Char(c));
+                }
+
+                // <script>タグの中のJavaScriptで < が出現した場合の状態
+                // 次の文字がタグの終了を示すか、単なる文字であるかを判定する
+                State::ScriptDataLessThanSign => {
+                    if c == '/' {
+                        self.buf = String::new();
+                        self.state = State::ScriptDataEndTagOpen;
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::ScriptData;
+                    return Some(HtmlToken::Char('<'));
+                }
+
+                // </script>タグの終了を処理する前の状態
+                State::ScriptDataEndTagOpen => {
+                    if c.is_ascii_alphabetic() {
+                        self.reconsume = true;
+                        self.state = State::ScriptDataEndTagName;
+                        self.create_tag(false);
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::ScriptData;
+                    return Some(HtmlToken::Char('<'));
+                }
+
+                // </script>タグのタグ名を処理する状態
+                State::ScriptDataEndTagName => {
+                    // 空白文字が出現した場合はタグ名の終了としてDataに遷移する
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    // 次の文字がアルファベットのとき一時的なbufferに文字を追加して、文字をトークンに追加する
+                    if c.is_ascii_alphabetic() {
+                        self.buf.push(c);
+                        self.append_tag_name(c.to_ascii_lowercase());
+                        continue;
+                    }
+
+                    self.state = State::TemporaryBuffer;
+                    self.buf = String::from("</") + &self.buf;
+                    self.buf.push(c);
+                    continue;
+                }
+
+                // 一時的なbufferに保存された文字列を処理する状態
+                // HtmlTokenizerのbufにデータを蓄える
+                State::TemporaryBuffer => {
+                    self.reconsume = true;
+                    if self.buf.chars().count() == 0 {
+                        self.state = State::ScriptData;
+                        return Some(HtmlToken::Char('<'));
+                    }
+
+                    // 最初の1文字を削除する
+                    let c = self.buf.chars().nth(0).expect("self.buf should have at least 1 char");
+                    self.buf.remove(0);
+                    return Some(HtmlToken::Char(c));
                 }
             }
         }
