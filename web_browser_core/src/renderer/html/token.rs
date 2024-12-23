@@ -114,6 +114,22 @@ impl HtmlTokenizer {
             }
         }
     }
+
+    // create_tagで作成された最後のトークン（latest_token）が開始タグの場合にself_closingフラグをtrueにする
+    fn set_self_closing_flag(&mut self) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                HtmlToken::StartTag { 
+                    tag: _,
+                    ref mut self_closing,
+                    attributes: _,
+                } => *self_closing = true,
+                _ => panic!("latest_token should be StartTag"),
+            }
+        }
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -300,6 +316,119 @@ impl Iterator for HtmlTokenizer {
                     self.reconsume = true;
                     self.state = State::AttributeName;
                     self.start_new_attribute();
+                }
+
+                // タグの属性の値を処理する前の状態
+                // <br class="" />のclass="の"を処理する前の状態
+                State::BeforeAttributeValue => {
+                    // 空欄は無視する
+                    if c == ' ' {
+                        continue;
+                    }
+
+                    if c == '"' {
+                        self.state = State::AttributeValueDoubleQuoted;
+                        continue;
+                    }
+
+                    if c == '\'' {
+                        self.state = State::AttributeValueSingleQuoted;
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeValueUnquoted;
+                }
+
+                // タグの属性の値を処理する状態（ダブルクォートで囲まれた値）
+                // <br class="aaa" />の"aaa"を処理する状態
+                State::AttributeValueDoubleQuoted => {
+                    if c == '"' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute(c, /*is_name*/false);
+                }
+
+                // タグの属性の値を処理する状態（シングルクォートで囲まれた値）
+                // <br class='aaa' />の'aaa'を処理する状態
+                State::AttributeValueSingleQuoted => {
+                    if c == '\'' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute(c, /*is_name*/false);
+                }
+
+                // タグの属性の値を処理する状態（クォートで囲まれていない値）
+                // <br class=aaa />のaaaを処理する状態
+                State::AttributeValueUnquoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute(c, /*is_name*/false);
+                }
+
+                // タグの属性の値を処理し終わった状態
+                // <br class="aaa" />の"aaa"を処理し終わった状態
+                State::AfterAttributeValueQuoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::BeforeAttributeName;
+                }
+
+                // タグが自己終了タグの場合の状態
+                // <br />の/の状態
+                State::SelfClosingStartTag => {
+                    if c == '>' {
+                        self.set_self_closing_flag();
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        // エラー処理
+                        return Some(HtmlToken::Eof);
+                    }
                 }
             }
         }
