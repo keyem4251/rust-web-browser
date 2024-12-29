@@ -101,7 +101,7 @@ impl Header {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_status_line_only() {
         let raw = "HTTP/1.1 200 OK\n\n".to_string();

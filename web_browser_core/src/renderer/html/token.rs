@@ -1,7 +1,6 @@
 use crate::renderer::html::attribute::Attribute;
 use alloc::{string::String, vec::Vec};
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HtmlTokenizer {
     state: State,
@@ -35,9 +34,9 @@ impl HtmlTokenizer {
     fn create_tag(&mut self, start_tag_token: bool) {
         if start_tag_token {
             self.latest_token = Some(HtmlToken::StartTag {
-                tag: String::new(), 
-                self_closing: false, 
-                attributes: Vec::new() 
+                tag: String::new(),
+                self_closing: false,
+                attributes: Vec::new(),
             });
         } else {
             self.latest_token = Some(HtmlToken::EndTag { tag: String::new() });
@@ -56,14 +55,14 @@ impl HtmlTokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                HtmlToken::StartTag { 
+                HtmlToken::StartTag {
                     ref mut tag,
                     self_closing: _,
                     attributes: _,
-                } | HtmlToken::EndTag { ref mut tag } => tag.push(c),
+                }
+                | HtmlToken::EndTag { ref mut tag } => tag.push(c),
                 _ => panic!("latest_token should be either StartTag or EndTag"),
             }
-            
         }
     }
 
@@ -84,7 +83,7 @@ impl HtmlTokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                HtmlToken::StartTag { 
+                HtmlToken::StartTag {
                     tag: _,
                     self_closing: _,
                     ref mut attributes,
@@ -100,7 +99,7 @@ impl HtmlTokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                HtmlToken::StartTag { 
+                HtmlToken::StartTag {
                     tag: _,
                     self_closing: _,
                     ref mut attributes,
@@ -121,7 +120,7 @@ impl HtmlTokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                HtmlToken::StartTag { 
+                HtmlToken::StartTag {
                     tag: _,
                     ref mut self_closing,
                     attributes: _,
@@ -148,7 +147,7 @@ impl Iterator for HtmlTokenizer {
         loop {
             let c = match self.reconsume {
                 true => self.reconsume_input(),
-                false => self.consume_next_input(),                
+                false => self.consume_next_input(),
             };
 
             match self.state {
@@ -161,7 +160,7 @@ impl Iterator for HtmlTokenizer {
 
                     // 入力文字が最後に到達した場合にはEofトークンを返す
                     if self.is_eof() {
-                        return Some(HtmlToken::Eof)
+                        return Some(HtmlToken::Eof);
                     }
 
                     // 上記以外の場合は文字トークンを返す
@@ -280,11 +279,11 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     if c.is_ascii_uppercase() {
-                        self.append_attribute(c.to_ascii_lowercase(), /*is_name*/true);
+                        self.append_attribute(c.to_ascii_lowercase(), /*is_name*/ true);
                         continue;
                     }
 
-                    self.append_attribute(c, /*is_name*/true);
+                    self.append_attribute(c, /*is_name*/ true);
                 }
 
                 // タグの属性の名前を処理している状態
@@ -356,7 +355,7 @@ impl Iterator for HtmlTokenizer {
                         return Some(HtmlToken::Eof);
                     }
 
-                    self.append_attribute(c, /*is_name*/false);
+                    self.append_attribute(c, /*is_name*/ false);
                 }
 
                 // タグの属性の値を処理する状態（シングルクォートで囲まれた値）
@@ -371,7 +370,7 @@ impl Iterator for HtmlTokenizer {
                         return Some(HtmlToken::Eof);
                     }
 
-                    self.append_attribute(c, /*is_name*/false);
+                    self.append_attribute(c, /*is_name*/ false);
                 }
 
                 // タグの属性の値を処理する状態（クォートで囲まれていない値）
@@ -391,7 +390,7 @@ impl Iterator for HtmlTokenizer {
                         return Some(HtmlToken::Eof);
                     }
 
-                    self.append_attribute(c, /*is_name*/false);
+                    self.append_attribute(c, /*is_name*/ false);
                 }
 
                 // タグの属性の値を処理し終わった状態
@@ -508,7 +507,11 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     // 最初の1文字を削除する
-                    let c = self.buf.chars().nth(0).expect("self.buf should have at least 1 char");
+                    let c = self
+                        .buf
+                        .chars()
+                        .nth(0)
+                        .expect("self.buf should have at least 1 char");
                     self.buf.remove(0);
                     return Some(HtmlToken::Char(c));
                 }
@@ -537,12 +540,12 @@ pub enum HtmlToken {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
-    Data, // https://html.spec.whatwg.org/multipage/parsing.html#data-state
-    TagOpen,     // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
-    EndTagOpen,     // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
-    TagName,     // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
-    BeforeAttributeName,// https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-name-state
-    AttributeName, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
+    Data,                       // https://html.spec.whatwg.org/multipage/parsing.html#data-state
+    TagOpen,             // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
+    EndTagOpen,          // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
+    TagName,             // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
+    BeforeAttributeName, // https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-name-state
+    AttributeName,       // https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
     AfterAttributeName, // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-name-state
     BeforeAttributeValue, // https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-value-state
     AttributeValueDoubleQuoted, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
@@ -550,11 +553,11 @@ pub enum State {
     AttributeValueUnquoted, // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
     AfterAttributeValueQuoted, // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
     SelfClosingStartTag, // https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
-    ScriptData, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-state
+    ScriptData,          // https://html.spec.whatwg.org/multipage/parsing.html#script-data-state
     ScriptDataLessThanSign, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-less-than-sign-state
     ScriptDataEndTagOpen, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-open-state
     ScriptDataEndTagName, // https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
-    TemporaryBuffer, // https://html.spec.whatwg.org/multipage/parsing.html#temporary-buffer
+    TemporaryBuffer,      // https://html.spec.whatwg.org/multipage/parsing.html#temporary-buffer
 }
 
 #[cfg(test)]
