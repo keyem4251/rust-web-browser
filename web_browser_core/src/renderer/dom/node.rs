@@ -1,5 +1,6 @@
 use alloc::rc::Rc;
 use alloc::rc::Weak;
+use alloc::string::String;
 use core::cell::RefCell;
 
 #[derive(Debug, Clone)]
@@ -66,3 +67,17 @@ impl Node {
         self.next_sibling.as_ref().cloned()
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum NodeKind {
+    // HTML文書のDOMツリーのルート要素。getElementByIdやappendChildなどでDOMツリーの操作を行う
+    Document, // https://dom.spec.whatwg.org/#interface-document
+    
+    // <p>タグなど。tagName、getAttributeなどでタグの情報を取得できる
+    Element(Element), // https://dom.spec.whatwg.org/#interface-element DOMツリー内の要素ノード
+
+    // 要素内のテキストコンテンツを表す。
+    Text(String), // https://dom.spec.whatwg.org/#interface-text
+}
+
+
