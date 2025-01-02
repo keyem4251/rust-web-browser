@@ -1,10 +1,10 @@
+use alloc::format;
 use alloc::rc::Rc;
 use alloc::rc::Weak;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::str::FromStr;
-use alloc::vec::Vec;
-use alloc::format;
 
 use crate::renderer::html::attribute::Attribute;
 
@@ -44,7 +44,7 @@ impl Node {
         self.first_child = first_child;
     }
 
-    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>>{
+    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
         self.first_child.as_ref().cloned()
     }
 
@@ -68,7 +68,7 @@ impl Node {
         self.next_sibling = next_sibling;
     }
 
-    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>>{
+    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>> {
         self.next_sibling.as_ref().cloned()
     }
 
@@ -81,7 +81,7 @@ impl Node {
 pub enum NodeKind {
     // HTML文書のDOMツリーのルート要素。getElementByIdやappendChildなどでDOMツリーの操作を行う
     Document, // https://dom.spec.whatwg.org/#interface-document
-    
+
     // <p>タグなど。tagName、getAttributeなどでタグの情報を取得できる
     Element(Element), // https://dom.spec.whatwg.org/#interface-element DOMツリー内の要素ノード
 
@@ -101,7 +101,10 @@ impl Window {
             document: Rc::new(RefCell::new(Node::new(NodeKind::Document))),
         };
 
-        window.document.borrow_mut().set_window(Rc::downgrade(&Rc::new(RefCell::new(window.clone()))));
+        window
+            .document
+            .borrow_mut()
+            .set_window(Rc::downgrade(&Rc::new(RefCell::new(window.clone()))));
         window
     }
 
@@ -120,7 +123,8 @@ pub struct Element {
 impl Element {
     pub fn new(element_name: &str, attributes: Vec<Attribute>) -> Self {
         Self {
-            kind: ElementKind::from_str(element_name).expect("failed to convert string to ElementKind"),
+            kind: ElementKind::from_str(element_name)
+                .expect("failed to convert string to ElementKind"),
             attributes,
         }
     }
@@ -133,11 +137,11 @@ impl Element {
 // https://dom.spec.whatwg.org/#interface-element
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum ElementKind {
-    Html, // https://html.spec.whatwg.org/multipage/semantics.html#the-html-element
-    Head, // https://html.spec.whatwg.org/multipage/semantics.html#the-head-element
-    Style, // https://html.spec.whatwg.org/multipage/semantics.html#the-style-element
+    Html,   // https://html.spec.whatwg.org/multipage/semantics.html#the-html-element
+    Head,   // https://html.spec.whatwg.org/multipage/semantics.html#the-head-element
+    Style,  // https://html.spec.whatwg.org/multipage/semantics.html#the-style-element
     Script, // https://html.spec.whatwg.org/multipage/scripting.html#the-script-element
-    Body, // https://html.spec.whatwg.org/multipage/sections.html#the-body-element
+    Body,   // https://html.spec.whatwg.org/multipage/sections.html#the-body-element
 }
 
 impl FromStr for ElementKind {
@@ -153,5 +157,4 @@ impl FromStr for ElementKind {
             _ => Err(format!("unimplemented element name {:?}", s)),
         }
     }
-    
 }
