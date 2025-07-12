@@ -1,9 +1,12 @@
+use crate::renderer::dom::node::Element;
+use crate::renderer::dom::node::ElementKind;
 use crate::renderer::dom::node::Node;
 use crate::renderer::dom::node::Window;
-use crate::renderer::html::token::HtmlTokenizer;
+use crate::renderer::html::token::{HtmlTokenizer, HtmlToken};
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use core::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct HtmlParser {
@@ -71,8 +74,97 @@ impl HtmlParser {
                     }
                     // それ以外のトークンの場合は自動的にHTML要素をDOMツリーに追加する
                     self.insert_element("html", Vec::new());
-                    self.mode = INsertionMode::BeforeHead;
+                    self.mode = InsertionMode::BeforeHead;
                     continue;
+                }
+                InsertionMode::BeforeHead => {
+                    match token {
+                        Some(HtmlToken::Char(c)) => {
+                            if c == ' ' || c == '\n' {
+                                // 次のトークンが空文字、開業のときは次のトークンに移動する
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::StartTag {
+                            ref tag,
+                            self_closing: _,
+                            ref attributes,
+                        }) => {
+                            if tag == "head" {
+                                self.insert_element(tag, attributes.to_vec());
+                                self.mode = InsertionMode::InHead;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+                    // それ以外の場合、HEAD要素をDOMツリーに追加する
+                    self.insert_element("head", Vec::New());
+                    self.mode = InsertionMode::InHead;
+                    continue;
+                }
+                InsertionMode::InHead => {
+                    match token {
+                        Some(HtmlToken::Char(c)) => {
+                            // 次のトークンが空文字、改行のときは次のトークンに移動
+                            if c == ' ' || c == '\n' {
+                                self.insert_char(c);
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::StartTag {
+                            ref tag,
+                            self_closing: _,
+                            ref attributes,
+                        }) => {
+                            if tag == "style" || tag == "script" {
+                                // タグの名前がstyle、scriptだったとき新しいノードを追加して、Text状態に遷移する
+                                self.insert_element(tag, attributes.to_vec());
+                                self.original_insertion_mode = self.mode;
+                                self.mode = InsertionMode::Text;
+                                token = self.t.next();
+                                continue;
+                            }
+                            
+                            if tag == "body" {
+                                // このブラウザがすべての仕様を実装していないので、headが省略されているHTMLを扱うのに必要
+                                // これがないとheadが省略されているHTMLで無限ループが発生
+                                self.pop_until(ElementKind::Head);
+                                self.mode = InsertionMode::AfterHead;
+                                continue;
+                            }
+
+                            if let Ok(_element_kind) = ElementKind::from_str(tag) {
+                                // このブラウザがすべての仕様を実装していないので、headが省略されているHTMLを扱うのに必要
+                                // これがないとheadが省略されているHTMLで無限ループが発生
+                                self.pop_until(ElementKind::Head);
+                                self.mode = InsertionMode::AfterHead;
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::EndTag { ref tag }) => {
+                            // 次のトークンがEndTagでheadの場合、すたっくに保存されているノードを取り出し
+                            // 次の状態のAfterHeadに遷移する
+                            if tag == "head" {
+                                self.mode = InsertionMode::AfterHead;
+                                token = self.t.next();
+                                self.pop_until(ElementKind::Head);
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        // meta、titleなどのサポートしていないタグは無視する
+                        token = self.t.next();
+                        continue;
+                    }
                 }
             }
         }
