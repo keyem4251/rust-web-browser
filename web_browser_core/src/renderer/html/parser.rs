@@ -3,6 +3,7 @@ use crate::renderer::dom::node::ElementKind;
 use crate::renderer::dom::node::Node;
 use crate::renderer::dom::node::Window;
 use crate::renderer::html::token::{HtmlTokenizer, HtmlToken};
+use alloc::collections::vec_deque::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::RefCell;
@@ -167,6 +168,40 @@ impl HtmlParser {
                     token = self.t.next();
                     continue;
 
+                }
+                InsertionMode::AfterHead => {
+                    match token {
+                        Some(HtmlToken::Char(c)) => {
+                            if c == ' ' || c == '\n' {
+                                // 次のトークンが空文字、改行のときは無視する
+                                self.insert_char(c);
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::StartTag {
+                            ref tag,
+                            self_closing: _,
+                            ref attributes,
+                        }) => {
+                            if tag == "body" {
+                                // 次のトークンがStartTagでbodyのときにDOMツリーに新しいノードを追加
+                                // InBodyに状態を遷移する
+                                self.insert_element(tag, attributes.to_vec());
+                                token = self.t.next();
+                                self.mode = InsertionMode::InBody;
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+                    // それ以外の場合、body要素をDOMツリーに追加する
+                    self.insert_element("body", Vec::new());
+                    self.mode = InsertionMode::InBody;
+                    continue;
                 }
             }
         }
