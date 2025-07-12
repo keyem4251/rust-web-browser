@@ -161,10 +161,12 @@ impl HtmlParser {
                         Some(HtmlToken::Eof) | None => {
                             return self.window.clone();
                         }
-                        // meta、titleなどのサポートしていないタグは無視する
-                        token = self.t.next();
-                        continue;
+                        _ => {}
                     }
+                    // meta、titleなどのサポートしていないタグは無視する
+                    token = self.t.next();
+                    continue;
+
                 }
             }
         }
