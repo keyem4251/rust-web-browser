@@ -379,6 +379,52 @@ impl HtmlParser {
         // 新しいノードを開いている要素スタックに追加する
         self.stack_of_open_elements.push(node);
     }
+
+    // stack_of_open_elementsから1つのノードを取り出して
+    // 特定の種類と一致する場合にtrueを返す
+    fn pop_current_node(&mut self, element_kind: ElementKind) -> bool {
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n,
+            None => return false,
+        };
+
+        if current.borrow().element_kind() == Some(element_kind) {
+            self.stack_of_open_elements.pop();
+            return true;
+        }
+
+        false
+    }
+
+    // stack_of_open_elementsから特定の種類の要素が現れるまでノードを取り出し続ける
+    fn pop_until(&mut self, element_kind: ElementKind) {
+        assert!(
+            self.contain_in_stack(element_kind),
+            "stack doesn't have an element {:?}",
+            element_kind,
+        );
+
+        loop {
+            let current = match self.stack_of_open_elements.pop() {
+                Some(n) => n,
+                None => return,
+            };
+
+            if current.borrow().element_kind() == Some(element_kind) {
+                return;
+            }
+        }
+    }
+
+    fn contain_in_stack(&mut self, element_kind: ElementKind) -> bool {
+        for i in 0..self.stack_of_open_elements.len() {
+            if self.stack_of_open_elements[i].borrow().element_kind() == Some(element_kind) {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 /// https://html.spec.whatwg.org/multipage/parsing.html#the-insertion-mode
