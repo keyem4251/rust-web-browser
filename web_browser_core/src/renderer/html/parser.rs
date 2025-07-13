@@ -272,6 +272,32 @@ impl HtmlParser {
                     }
                     self.mode = self.original_insertion_mode;
                 }
+                InsertionMode::AfterBody => {
+                    // 主にhtml終了タグを扱う
+                    match token {
+                        Some(HtmlToken::Chart(c)) => {
+                            // 文字トークンのときは無視して次のトークンも移動する
+                            token = self.t.next();
+                            continue;
+                        }
+                        Some(HtmlToken::EndTag {
+                            ref tag
+                         }) => {
+                            // EndTagでタグがhtmlのときにAfterAfterBody状態に遷移する
+                            if tag == "html" {
+                                self.mode = InsertionMode::AfterAfterBody;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+                    // それ以外の場合はInBodyに遷移する
+                    self.mode = InsertionMode::InBody;
+                }
             }
         }
 
