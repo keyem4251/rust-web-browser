@@ -203,6 +203,75 @@ impl HtmlParser {
                     self.mode = InsertionMode::InBody;
                     continue;
                 }
+                InsertionMode::InBody => {
+                    match token {
+                        Some(HtmlToken::EndTag {
+                            ref tag
+                         }) => {
+                            // body終了タグ、html終了タグの場合に次の状態に遷移する
+                            match tag.as_str() {
+                                "body" => {
+                                    self.mode = InsertionMode::AfterBody;
+                                    token = self.t.next();
+                                    if !self.contain_in_stack(ElementKind::Body) {
+                                        // パースの失敗、トークンを無視する
+                                        continue;
+                                    }
+                                    self.pop_until(ElementKind::Body);
+                                    continue;
+                                }
+                                "html" => {
+                                    if self.pop_current_node(ElementKind::Body) {
+                                        self.mode = InsertionMode::AfterBody;
+                                        assert!(self.pop_current_node(ElementKind::Html));
+                                    } else {
+                                        token = self.t.next();
+                                    }
+                                    continue;
+                                }
+                                _ => {
+                                    token = self.t.next();
+                                }
+                            }
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+                }
+                InsertionMode::Text => {
+                    match token {
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        Some(HtmlToken::EndTag { 
+                            ref tag
+                        }) => {
+                            // style終了タグ、script終了タグが出てきたら下の状態に戻る
+                            if tag == "style" {
+                                self.pop_until(ElementKind::Style);
+                                self.mode = self.original_insertion_mode;
+                                token = self.t.next();
+                                continue;
+                            }
+                            if tag == "script" {
+                                self.pop_until(ElementKind::Script);
+                                self.mode = self.original_insertion_mode;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Char(c)) => {
+                            // 終了タグが出てくるまで文字をテキストノードとしてDOMツリーに追加します
+                            self.insert_char(c);
+                            token = self.t.next();
+                            continue;
+                        }
+                        _ => {}
+                    }
+                    self.mode = self.original_insertion_mode;
+                }
             }
         }
 
