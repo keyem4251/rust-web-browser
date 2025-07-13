@@ -1,11 +1,14 @@
 use crate::renderer::dom::node::Element;
 use crate::renderer::dom::node::ElementKind;
 use crate::renderer::dom::node::Node;
+use crate::renderer::dom::node::NodeKind;
 use crate::renderer::dom::node::Window;
+use crate::renderer::html::attribute::Attribute;
 use crate::renderer::html::token::{HtmlTokenizer, HtmlToken};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
+use core::cell::Ref;
 use core::cell::RefCell;
 use core::str::FromStr;
 
@@ -275,7 +278,7 @@ impl HtmlParser {
                 InsertionMode::AfterBody => {
                     // 主にhtml終了タグを扱う
                     match token {
-                        Some(HtmlToken::Chart(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             // 文字トークンのときは無視して次のトークンも移動する
                             token = self.t.next();
                             continue;
@@ -298,10 +301,83 @@ impl HtmlParser {
                     // それ以外の場合はInBodyに遷移する
                     self.mode = InsertionMode::InBody;
                 }
+                InsertionMode::AfterAfterBody => {
+                    match token {
+                        Some(HtmlToken::Char(_c)) => {
+                            // 次のトークンが文字のときは無視して次のトークンに移動する
+                            token = self.t.next();
+                            continue;
+                        }
+                        Some(HtmlToken::Eof) | None => {
+                            // 次のトークンがEofまたは存在しないとき
+                            // トークン列をすべて消費したため構築したDOMツリーを返す
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+
+                    // パースの失敗
+                    // 再度トークンを解釈しようと試みる
+                    self.mode = InsertionMode::InBody;
+                }
             }
         }
 
         self.window.clone()
+    }
+
+    fn create_element(&self, tag: &str, attributes: Vec<Attribute>) -> Node {
+        Node::new(NodeKind::Element(Element::new(tag, attributes)))
+    }
+
+    // HTMLの構造を解析して要素ノードを正しい位置に挿入する
+    // 指定されたタグと属性も持つノードを作成し、挿入先の位置を決定する
+    fn insert_element(&mut self, tag: &str, attributes: Vec<Attribute>) {
+        let window = self.window.borrow();
+        let current = match self.stack_of_open_elements.last() {
+            // 現在の開いている要素スタックの最後のノードを取得 (current) する
+            Some(n) => n.clone(),
+            // スタックがからの場合はルート要素が現在参照しているノードのためwindow.documentを返す
+            None => window.document(),
+        };
+
+        // 受け取ったタグ、属性をもとにノードを作成
+        let node = Rc::new(RefCell::new(self.create_element(tag, attributes)));
+        if current.borrow().first_child().is_some() {
+            // 現在参照しているノードにすでに子要素がある場合
+            let mut last_sibling = current.borrow().first_child();
+            loop {
+                // 最後の兄弟ノードを探索する
+                last_sibling = match last_sibling {
+                    Some(ref node) => {
+                        if node.borrow().next_sibling().is_some() {
+                            node.borrow().next_sibling()
+                        } else {
+                            break;
+                        }
+                    }
+                    None => unimplemented!("last_sibling should be Some"),
+                };
+            }
+
+            // 受け取ったタグ、属性をもとにして作成したノードを最後の兄弟ノードの直後に挿入する
+            last_sibling.unwrap().borrow_mut().set_next_sibling(Some(node.clone()));
+            node.borrow_mut().set_previous_sibling(Rc::downgrade(
+                &current.borrow().first_child().expect("failed to get a first child"),
+            ))
+        } else {
+            // 兄弟ノードが存在しない場合
+            // 新しいノードを現在参照しているノードの最初の子要素として設定する
+            current.borrow_mut().set_first_child(Some(node.clone()));
+        }
+
+        // 挿入が完了したら、現在参照しているノードと新しいノードを相互にリンクする
+        // 現在参照しているノードの最後の子ノードを新しいノードに設定する
+        current.borrow_mut().set_last_child(Rc::downgrade(&node));
+        // 新しいノードの親を現在参照しているノードに設定する
+        node.borrow_mut().set_parent(Rc::downgrade(&current)); 
+        // 新しいノードを開いている要素スタックに追加する
+        self.stack_of_open_elements.push(node);
     }
 }
 
