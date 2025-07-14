@@ -7,6 +7,7 @@ use crate::renderer::html::attribute::Attribute;
 use crate::renderer::html::token::{HtmlTokenizer, HtmlToken};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::rc::Rc;
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::Ref;
 use core::cell::RefCell;
@@ -108,7 +109,7 @@ impl HtmlParser {
                         _ => {}
                     }
                     // それ以外の場合、HEAD要素をDOMツリーに追加する
-                    self.insert_element("head", Vec::New());
+                    self.insert_element("head", Vec::new());
                     self.mode = InsertionMode::InHead;
                     continue;
                 }
@@ -424,6 +425,67 @@ impl HtmlParser {
         }
 
         false
+    }
+
+    fn create_char(&self, c: char) -> Node {
+        let mut s = String::new();
+        s.push(c);
+        Node::new(NodeKind::Text(s))
+    }
+
+    // 新しい文字ノードを作成してDOMツリーに追加するか、現在のテキストノードに新しい文字を挿入する
+    fn insert_char(&mut self, c: char) {
+        // 現在開いている要素スタックの最後のノードを取得する
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n.clone(),
+            None => return, 
+            // スタックが空の場合はルートノードの配下にテキストノードを追加することになる
+            // これは適切ではないので何もせずにメソッドを終了する
+        };
+
+        // 現在参照しているノードがテキストノードの場合、そのノードに文字を追加する
+        if let NodeKind::Text(ref mut s) = current.borrow_mut().kind {
+            s.push(c);
+            return;
+        }
+
+        // 改行文字や空白文字のときはテキストノードを追加しない
+        if c == '\n' || c == ' ' {
+            return;
+        }
+
+        // この前の時点で現在参照しているノードがテキストの場合、改行、空白文字の場合はreturn済
+        // 現在参照しているノードが文字ノードでない場合新しいテキストノードを作成する
+        let node = Rc::new(RefCell::new(self.create_char(c)));
+
+        // 現在参照しているノードに子要素がある場合
+        if current.borrow().first_child().is_some() {
+            // 新しいテキストノードを直後に追加
+            current
+            .borrow()
+            .first_child()
+            .unwrap()
+            .borrow_mut()
+            .set_next_sibling(Some(node.clone()));
+
+            node.borrow_mut().set_previous_sibling(Rc::downgrade(
+                &current.borrow().first_child().expect("failed to get a first child"),
+            ));
+        } else {
+            // 兄弟ノードが存在しない場合
+
+            // 新しいテキストノードを現在参照しているノードの最初の子要素として設定
+            current.borrow_mut().set_first_child(Some(node.clone()));
+        }
+
+        // 現在参照しているノードへの新規ノードの追加が完了したら、親子、兄弟関係のリンク
+        // 現在参照しているノードの最後の子ノードを新しいノードに設定
+        current.borrow_mut().set_last_child(Rc::downgrade(&node));
+        // 新しいノードの親を現在参照しているノードに設定
+        node.borrow_mut().set_parent(Rc::downgrade(&current));;
+
+        // 新しいノードを開いている要素スタックに追加
+        self.stack_of_open_elements.push(node);
     }
 }
 
