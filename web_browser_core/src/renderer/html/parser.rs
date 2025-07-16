@@ -221,6 +221,12 @@ impl HtmlParser {
                                 token = self.t.next();
                                 continue;
                             }
+                            "h1" | "h2" => {
+                                // h1、h2の開始タグが現れたら、DOMツリーに追加する
+                                self.insert_element(tag, attributes.to_vec());
+                                token = self.t.next();
+                                continue;
+                            }
                             _ => {
                                 token = self.t.next();
                             }
@@ -251,6 +257,13 @@ impl HtmlParser {
                                 }
                                 "p" => {
                                     // 次のトークンが終了タグのとき、スタックからpタグまでを取り出しトークンを次に進める
+                                    let element_kind = ElementKind::from_str(tag).expect("failed to convert string to ElementKind");
+                                    token = self.t.next();
+                                    self.pop_until(element_kind);
+                                    continue;
+                                }
+                                "h1" | "h2" => {
+                                    // h1、h2終了タグのときスタックからh1、h2タグまでを取り出しトークンを次に進める
                                     let element_kind = ElementKind::from_str(tag).expect("failed to convert string to ElementKind");
                                     token = self.t.next();
                                     self.pop_until(element_kind);
