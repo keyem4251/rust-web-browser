@@ -227,6 +227,12 @@ impl HtmlParser {
                                 token = self.t.next();
                                 continue;
                             }
+                            "a" => {
+                                // aの開始タグが現れたら、DOMツリーに追加する
+                                self.insert_element(tag, attributes.to_vec());
+                                token = self.t.next();
+                                continue;
+                            }
                             _ => {
                                 token = self.t.next();
                             }
@@ -269,15 +275,28 @@ impl HtmlParser {
                                     self.pop_until(element_kind);
                                     continue;
                                 }
+                                "a" => {
+                                    // a終了タグのときスタックからaタグまでを取り出しトークンを次に進める
+                                    let element_kind = ElementKind::from_str(tag).expect("failed to convert string to ElementKind");
+                                    token = self.t.next();
+                                    self.pop_until(element_kind);
+                                    continue;
+                                }
                                 _ => {
                                     token = self.t.next();
                                 }
                             }
                         }
+                        Some(HtmlToken::Char(c)) => {
+                            // Body状態のときに文字が出てきたらinsert_charを呼び
+                            // テキストノードをDOMツリーに追加する
+                            self.insert_char(c);
+                            token = self.t.next();
+                            continue;
+                        }
                         Some(HtmlToken::Eof) | None => {
                             return self.window.clone();
                         }
-                        _ => {}
                     }
                 }
                 InsertionMode::Text => {
