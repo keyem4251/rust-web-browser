@@ -19,6 +19,12 @@ pub struct Node {
     next_sibling: Option<Rc<RefCell<Node>>>, // ノードの次の兄弟ノード
 }
 
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
 impl Node {
     pub fn new(kind: NodeKind) -> Self {
         Self {
@@ -95,7 +101,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub enum NodeKind {
     // HTML文書のDOMツリーのルート要素。getElementByIdやappendChildなどでDOMツリーの操作を行う
     Document, // https://dom.spec.whatwg.org/#interface-document
@@ -105,6 +111,19 @@ pub enum NodeKind {
 
     // 要素内のテキストコンテンツを表す。
     Text(String), // https://dom.spec.whatwg.org/#interface-text
+}
+
+impl PartialEq for NodeKind {
+    fn eq(&self, other: &Self) -> bool {
+        match &self {
+            NodeKind::Document => matches!(other, NodeKind::Document),
+            NodeKind::Element(e1) => match &other {
+                NodeKind::Element(e2) => e1.kind == e2.kind,
+                _ => false,
+            },
+            NodeKind::Text(_) => matches!(other, NodeKind::Text(_)),
+        }
+    }
 }
 
 // https://html.spec.whatwg.org/multipage/nav-history-apis.html#window
