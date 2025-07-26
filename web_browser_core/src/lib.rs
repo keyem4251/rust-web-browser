@@ -6,3 +6,5 @@ pub mod error;
 pub mod http;
 pub mod renderer;
 pub mod url;
+pub mod browser;
+pub mod utils;
