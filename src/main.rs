@@ -17,7 +17,7 @@ Data: xx xx xx
 <body>
   <h1 id="title">H1 title</h1>
   <h2 class="class">H2 title</h2>
-  <p>Text text.</p>
+  <p>Test text.</p>
   <p>
     <a href="example.com">Link1</a>
     <a href="example.com">Link2</a>
