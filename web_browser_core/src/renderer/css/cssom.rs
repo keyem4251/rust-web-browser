@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use crate::renderer::css::token::CssTokenizer;
+use crate::renderer::css::token::{CssToken, CssTokenizer};
 use core::iter::Peekable;
 
 #[derive(Debug, Clone)]
@@ -85,3 +85,5 @@ impl Declaration {
         self.value = value;
     }
 }
+
+pub type ComponentValue = CssToken;
