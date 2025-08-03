@@ -1,4 +1,4 @@
-use alloc::{string::String, vec::Vec};
+use alloc::{string::{String, ToString}, vec::Vec};
 
 use crate::renderer::css::token::{CssToken, CssTokenizer};
 use core::iter::Peekable;
@@ -11,6 +11,107 @@ pub struct CssParser {
 impl CssParser {
     pub fn new(t: CssTokenizer) -> Self {
         Self { t: t.peekable() }
+    }
+
+    pub fn parse_stylesheet(&mut self) -> StyleSheet {
+        let mut sheet = StyleSheet::new();
+        sheet.set_rules(self.consume_list_of_rules());
+        sheet
+    }
+
+    fn consume_list_of_rules(&mut self) -> Vec<QualifiedRule> {
+        let mut rules = Vec::new();
+        loop {
+            let token = match self.t.peek() {
+                Some(t) => t,
+                None => rules,
+            };
+
+            match token {
+                // AtKeywordトークンが出てきた場合、他のCSSをインポートする
+                // @import、メディアクエリを表す@mediaなどのルールが始まることを表す
+                CssToken::AtKeyword(_keyword) => {
+                    let _rule = self.consume_qualified_rule();
+                    // 今回は@から始まるルールはサポートしないので無視
+                }
+                _ => {
+                    // @キーワードトークン以外の場合、1つのルールを解釈しベクタに追加する
+                    let rule = self.consume_qualified_rule();
+                    match rule {
+                        Some(r) => rules.push(r),
+                        None => return rules,
+                    }
+                }
+            }
+        }
+    }
+
+    fn consume_qualified_rule(&mut self) -> Option<QualifiedRule> {
+        let mut rule = QualifiedRule::new();
+        loop {
+            let token = match self.t.peek() {
+                Some(t) => t,
+                None => return None,
+            };
+
+            match token {
+                CssToken::OpenCurly => {
+                    // 次のトークンが { のとき、宣言ブロックの開始を表す
+                    // 宣言ブロックの解釈を行い、ルールのdeclarationsフィールドに設定する
+                    assert_eq!(self.t.next(), Some(CssToken::OpenCurly));
+                    rule.set_declarations(self.consume_list_of_declarations());
+                    return Some(rule);
+                }
+                _ => {
+                    // ルールのセレクタとして扱う
+                    // セレクタを解釈し、ルールのselectorフィールドに設定する
+                    rule.set_selector(self.consume_selector());
+                }
+            }
+        }
+    }
+
+    fn consume_selector(&mut self) -> Selector {
+        let token = match self.t.next() {
+            Some(t) => t,
+            None => panic!("should have a token but got None"),
+        };
+
+        match token {
+            // 1
+            CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
+            CssToken::Delim(delim) => {
+                // 2
+                if delim == '.' {
+                    return Selector::ClassSelector(self.consume_ident());
+                }
+                panic!("Parse error: {:?} is an unexpected token.", token);
+            }
+            CssToken::Ident(ident) => {
+                // 3
+                // a:hoverのようなセレクタはタイプセレクタとして扱う
+                // コロンが出てきた場合は宣言ブロックの開始直前までトークンを進める
+                if self.t.peek() == Some(&CssToken::Colon) {
+                    // 4
+                    while self.t.peek() != Some(&CssToken::OpenCurly) {
+                        self.t.next();
+                    }
+                }
+                Selector::TypeSelector(ident.to_string())
+            }
+            CssToken::AtKeyword(_keyword) => {
+                // 5
+                // @から始まるルールを無視するための宣言ブロックの開始直前までトークンを進める
+                while self.t.peek() != Some(&CssToken::OpenCurly) {
+                    self.t.next();
+                }
+                Selector::UnknownSelector
+            }
+            _ => {
+                self.t.next();
+                Selector::UnknownSelector
+            }
+        }
     }
 }
 
