@@ -1,6 +1,6 @@
 use alloc::{string::{String, ToString}, vec::Vec};
 
-use crate::renderer::css::token::{CssToken, CssTokenizer};
+use crate::renderer::css::token::{self, CssToken, CssTokenizer};
 use core::iter::Peekable;
 
 #[derive(Debug, Clone)]
@@ -78,21 +78,20 @@ impl CssParser {
         };
 
         match token {
-            // 1
+            // ハッシュトークンのときIDセレクタを作成して返す
             CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
             CssToken::Delim(delim) => {
-                // 2
+                // ピリオドのときクラスセレクタを作成して返す
                 if delim == '.' {
                     return Selector::ClassSelector(self.consume_ident());
                 }
                 panic!("Parse error: {:?} is an unexpected token.", token);
             }
             CssToken::Ident(ident) => {
-                // 3
+                // 識別子のときタイプセレクタを作成して返す
                 // a:hoverのようなセレクタはタイプセレクタとして扱う
-                // コロンが出てきた場合は宣言ブロックの開始直前までトークンを進める
                 if self.t.peek() == Some(&CssToken::Colon) {
-                    // 4
+                    // コロンが出てきた場合は宣言ブロックの開始直前までトークンを進める
                     while self.t.peek() != Some(&CssToken::OpenCurly) {
                         self.t.next();
                     }
@@ -100,7 +99,6 @@ impl CssParser {
                 Selector::TypeSelector(ident.to_string())
             }
             CssToken::AtKeyword(_keyword) => {
-                // 5
                 // @から始まるルールを無視するための宣言ブロックの開始直前までトークンを進める
                 while self.t.peek() != Some(&CssToken::OpenCurly) {
                     self.t.next();
@@ -112,6 +110,59 @@ impl CssParser {
                 Selector::UnknownSelector
             }
         }
+    }
+
+    fn consume_list_of_declarations(&mut self) -> Vec<Declaration> {
+        let mut declarations = Vec::new();
+        loop {
+            let token = match self.t.peek() {
+                Some(t) => t,
+                None => return declarations,
+            };
+
+            match token {
+                CssToken::CloseCurly => {
+                    assert_eq!(self.t.next(), Some(CssToken::CloseCurly));
+                    // 閉じ並み括弧が現れたら、今まで作成した宣言を返す
+                    return declarations;
+                }
+                CssToken::SemiColon => {
+                    // 次のトークンがセミコロンの場合、1つの宣言が終了したことを表す
+                    // 単にセミコロンのトークンを消費し何もしない
+                    assert_eq!(self.t.next(), Some(CssToken::SemiColon));
+                }
+                CssToken::Ident(ref _ident) => {
+                    // 次のトークンが識別子のとき、1つの宣言を解釈し追加する
+                    if let Some(declaration) = self.consume_declaration() {
+                        declarations.push(declaration);
+                    }
+                }
+                _ => {
+                    self.t.next();
+                }
+            }
+        }
+    }
+
+    fn consume_declaration(&mut self) -> Option<Declaration> {
+        if self.t.peek().is_none() {
+            return None;
+        }
+
+        let mut declaration = Declaration::new();
+        // プロパティを処理する
+        declaration.set_property(self.consume_ident());
+        match self.t.next() {
+            Some(token) => match token {
+                CssToken::Colon => {}
+                // トークンが転んでない場合はパースエラーなのでNoneを返す
+                _ => return None, 
+            },
+            None => return None,
+        }
+
+        declaration.set_value(self.consume_component_value());
+        Some(declaration)
     }
 }
 
