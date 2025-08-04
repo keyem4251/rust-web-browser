@@ -24,7 +24,7 @@ impl CssParser {
         loop {
             let token = match self.t.peek() {
                 Some(t) => t,
-                None => rules,
+                None => return rules,
             };
 
             match token {
@@ -145,9 +145,7 @@ impl CssParser {
     }
 
     fn consume_declaration(&mut self) -> Option<Declaration> {
-        if self.t.peek().is_none() {
-            return None;
-        }
+        self.t.peek()?;
 
         let mut declaration = Declaration::new();
         // プロパティを処理する
@@ -163,6 +161,27 @@ impl CssParser {
 
         declaration.set_value(self.consume_component_value());
         Some(declaration)
+    }
+
+    fn consume_ident(&mut self) -> String {
+        // 識別子トークンを消費し文字列を取得する
+        let token = match self.t.next() {
+            Some(t) => t,
+            None => panic!("should have a token but got None"),
+        };
+
+        match token {
+            CssToken::Ident(ref ident) => ident.to_string(),
+            _ => {
+                panic!("Parse error: {:?} is an unexpected token.", token);
+            }
+        }
+    }
+
+    // https://www.w3.org/TR/css-syntax-3/#consume-component-value
+    fn consume_component_value(&mut self) -> ComponentValue {
+        // コンポーネント値はCSSのトークンと同等なので、トークンが存在することを確認してそのまま帰す
+        self.t.next().expect("should have a token in consume_component_value")
     }
 }
 
@@ -193,7 +212,7 @@ pub struct QualifiedRule {
 impl QualifiedRule {
     pub fn new() -> Self {
         Self {
-            selector: Selector: TypeSelection("".to_string()),
+            selector: Selector::TypeSelector("".to_string()),
             declarations: Vec::new(),
         }
     }
@@ -202,7 +221,7 @@ impl QualifiedRule {
         self.selector = selector;
     }
 
-    pub fn set_declarations(&mut self, declarations: Vec<Declarasion>) {
+    pub fn set_declarations(&mut self, declarations: Vec<Declaration>) {
         self.declarations = declarations;
     }
 }
