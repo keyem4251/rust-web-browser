@@ -4,6 +4,7 @@ use alloc::rc::Weak;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use core::fmt::Display;
 use core::str::FromStr;
 
 use crate::renderer::html::attribute::Attribute;
@@ -169,6 +170,13 @@ impl Element {
     pub fn kind(&self) -> ElementKind {
         self.kind
     }
+
+    pub fn is_block_element(&self) -> bool {
+        match self.kind {
+            ElementKind::Body | ElementKind::H1 | ElementKind::H2 | ElementKind::P => true,
+            _ => false,
+        }
+    }
 }
 
 // https://dom.spec.whatwg.org/#interface-element
@@ -201,5 +209,22 @@ impl FromStr for ElementKind {
             "a" => Ok(ElementKind::A),
             _ => Err(format!("unimplemented element name {:?}", s)),
         }
+    }
+}
+
+impl Display for Element {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let s = match self {
+            ElementKind::Html => "html",
+            ElementKind::Head => "head",
+            ElementKind::Style => "style",
+            ElementKind::Script => "script",
+            ElementKind::Body => "body",
+            ElementKind::H1 => "h1",
+            ElementKind::H2 => "h2",
+            ElementKind::P => "p",
+            ElementKind::A => "a",
+        };
+        write!(f, "{}", s)
     }
 }

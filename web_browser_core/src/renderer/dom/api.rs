@@ -11,12 +11,12 @@ pub fn get_target_element_node(
     match node {
         Some(n) => {
             if n.borrow().kind() == NodeKind::Element(Element::new(&element_kind.to_string(), Vec::new())) {
-                // 1
+                // 現在のノードの要素がelement_kindと同じならそのノードを返す
                 return Some(n.clone());
             }
-            // 2
+            // 異なる場合は子ノードに再帰的に関数を呼ぶ
             let result1 = get_target_element_node(n.borrow().first_child(), element_kind);
-            // 3
+            // さらに兄弟ノードに対して再帰的に関数を呼ぶ
             let result2 = get_target_element_node(n.borrow().next_sibling(), element_kind);
             if result1.is_none() && result2.is_none() {
                 return None;
