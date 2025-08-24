@@ -1,8 +1,8 @@
-use core::{alloc::Layout, cell::{Ref, RefCell}};
+use core::{alloc::Layout, cell::{Ref, RefCell}, ops::RangeInclusive};
 
 use alloc::{rc::{Rc, Weak}, vec::Vec};
 
-use crate::renderer::{css::cssom::{ComponentValue, Declaration, Selector, StyleSheet}, dom::node::{Node, NodeKind}, layout::computed_style::{Color, ComputedStyle, DisplayType}};
+use crate::{constants::{CHAR_HEIGHT_WITH_PADDING, CHAR_WIDTH, CONTENT_AREA_WIDTH}, renderer::{css::cssom::{ComponentValue, Declaration, Selector, StyleSheet}, dom::node::{Node, NodeKind}, layout::computed_style::{Color, ComputedStyle, DisplayType, FontSize}}};
 
 #[derive(Debug, Clone)]
 pub struct LayoutObject {
@@ -12,7 +12,7 @@ pub struct LayoutObject {
     next_sibling: Option<Rc<RefCell<LayoutObject>>>,
     parent: Weak<RefCell<LayoutObject>>,
     style: ComputedStyle,
-    point: LayoutPoint:
+    point: LayoutPoint,
     size: LayoutSize,
 }
 
@@ -184,6 +184,86 @@ impl LayoutObject {
             }
             NodeKind::Text(_) => self.kind = LayoutObjectKind::Text,
         }
+    }
+
+    pub fn compute_size(&mut self, parent_size: LayoutSize) {
+        let mut size = LayoutSize::new(0, 0);
+        match self.kind() {
+            LayoutObjectKind::Block => {
+                // 1
+                size.set_width(parent_size.width());
+                // すべての子ノードの高さを足し合わせた結果が高さになる
+                // ただしインライン要素が横に並んでいる場合は注意が必要
+                let mut height = 0;
+                let mut child = self.first_child();
+                let mut previous_child_kind = LayoutObjectKind::Block;
+                while child.is_some() {
+                    let c = match child {
+                        Some(c) => c,
+                        None => panic!("first child should exist"),
+                    };
+
+                    if previous_child_kind == LayoutObjectKind::Block || c.borrow().kind() == LayoutObjectKind::Block {
+                        height += c.borrow().size.height();
+                    }
+
+                    previous_child_kind = c.borrow().kind();
+                    child = c.borrow().next_sibling();
+                }
+                size.set_height(height);
+            }
+            LayoutObjectKind::Inline => {
+                // 2
+                // すべての子ノードの高さと横幅を足し合わせた結果が現在のノードの高さと横幅になる
+                let mut width = 0;
+                let mut height = 0;
+                let mut child = self.first_child();
+                while child.is_some() {
+                    let c = match child {
+                        Some(c) => c,
+                        None => panic!("first child should exist"),
+                    };
+
+                    width += c.borrow().size.width();
+                    height += c.borrow().size.height();
+
+                    child = c.borrow().next_sibling();
+                }
+
+                size.set_width(width);
+                size.set_height(height);
+            }
+            LayoutObjectKind::Text => {
+                // 3
+                if let NodeKind::Text(t) =  self.node_kind(){
+                    let ratio = match self.style.font_size() {
+                        // 4
+                        FontSize::Medium => 1,
+                        FontSize::XLarge => 2,
+                        FontSize::XXLarge => 3,
+                    };
+                    // 5
+                    let width = CHAR_WIDTH * ratio * t.len() as i64;
+                    if width > CONTENT_AREA_WIDTH {
+                        // 6
+                        // テキストが複数行のとき
+                        size.set_width(CONTENT_AREA_WIDTH);
+                        let line_num = if width.wrapping_rem(CONTENT_AREA_WIDTH) == 0 {
+                            width.wrapping_div(CONTENT_AREA_WIDTH)
+                        } else {
+                            // 7
+                            width.wrapping_div(CONTENT_AREA_WIDTH) + 1
+                        };
+                        size.set_height(CHAR_HEIGHT_WITH_PADDING * ratio * line_num);
+                    } else {
+                        // テキストが1行に収まるとき
+                        size.set_width(width);
+                        size.set_height(CHAR_HEIGHT_WITH_PADDING * ratio);
+                    }
+                }
+            }
+        }
+        self.size = size;
     }
 }
 

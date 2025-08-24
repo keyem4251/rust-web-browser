@@ -43,7 +43,8 @@ impl LayoutView {
         if let Some(n) = node {
             // ノードがブロック要素の場合、子ノードのレイアウトを計算する前に横幅を決める
             if n.borrow().kind() == LayoutObjectKind::Block {
-                // 1
+                // 親のノードのサイズによって横幅を決定する
+                // ブロック要素は親の横幅いっぱいまで広がるので親ノードの横幅と同等になる
                 n.borrow_mut().compute_size(parent_size);
             }
 
@@ -55,7 +56,7 @@ impl LayoutView {
             // 子ノードのサイズが決まったあとにサイズを計算する
             // ブロック要素のとき、高さは子ノードの高さに依存する
             // インライン要素のとき、高さも横幅も子ノードに依存する
-            // 2
+            // 子要素のサイズが決定したあとなので子要素のサイズを下に高さを決定する
             n.borrow_mut().compute_size(parent_size);
         }
     }
